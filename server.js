@@ -8,10 +8,10 @@ const fs = require("fs");
 const app = express();
 const PORT = 3000;
 
-// Ensure uploads directory exists
-const UPLOADS_DIR = path.join(__dirname, "uploads");
+// Ensure uploads directory exists — use /tmp for serverless/read-only environments
+const UPLOADS_DIR = process.env.UPLOADS_DIR || (fs.existsSync('/tmp') ? '/tmp/uploads' : path.join(__dirname, "uploads"));
 if (!fs.existsSync(UPLOADS_DIR)) {
-  fs.mkdirSync(UPLOADS_DIR);
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 }
 
 // Allowed audio MIME types
