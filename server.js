@@ -10,6 +10,8 @@ const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const app = express();
 const PORT = 3000;
 
+app.set("trust proxy", 1);
+
 const r2 = new S3Client({
   region: "auto",
   endpoint: `https://${process.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`,
