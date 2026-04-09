@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Transcribe by Dayo Adebari</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="header">
+        <div class="logo">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" x2="12" y1="19" y2="22"/>
+          </svg>
+          Transcribe <span class="logo-by">by Dayo Adebari</span>
+        </div>
+      </header>
+
+      <main class="main">
+        <div class="hero">
+          <h1>Turn audio into text</h1>
+          <p>Drop in a file, get back clean text.</p>
+        </div>
+
+        <div class="card">
+          <div class="drop-zone" id="dropZone">
+            <input type="file" id="fileInput" accept=".mp3,.mp4,.m4a,.wav,.ogg,.flac,.webm" hidden />
+            <div class="drop-icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" x2="12" y1="3" y2="15"/>
+              </svg>
+            </div>
+            <p class="drop-label">Drop your audio file here</p>
+            <p class="drop-or">or</p>
+            <button class="btn-browse" id="browseBtn">Choose file</button>
+            <p class="drop-meta">MP3, M4A, WAV, OGG, FLAC &middot; Up to 100 MB &middot; 10/hr limit</p>
+          </div>
+
+          <div class="file-row" id="fileInfo" hidden>
+            <div class="file-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 18V5l12-2v13"/>
+                <circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+              </svg>
+            </div>
+            <span class="file-name" id="fileName"></span>
+            <span class="file-size" id="fileSize"></span>
+            <button class="btn-clear" id="removeFile" title="Remove">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="error-banner" id="errorMsg" hidden></div>
+
+          <button class="btn-transcribe" id="transcribeBtn" disabled>Transcribe</button>
+        </div>
+
+        <div class="progress-wrap" id="progressWrap" hidden>
+          <div class="progress-bar"><div class="progress-fill"></div></div>
+          <p class="progress-label">Transcribing — this may take a moment</p>
+        </div>
+
+        <div class="result-card" id="resultCard" hidden>
+          <div class="result-top">
+            <span class="result-label">Transcript</span>
+            <button class="btn-download" id="downloadBtn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" x2="12" y1="15" y2="3"/>
+              </svg>
+              Download
+            </button>
+          </div>
+          <textarea id="resultText" readonly spellcheck="false"></textarea>
+        </div>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
