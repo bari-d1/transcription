@@ -93,13 +93,34 @@ transcribeBtn.addEventListener("click", async () => {
   clearError();
   setLoading(true);
 
-  const formData = new FormData();
-  formData.append("audio", selectedFile);
-
   try {
+    // Step 1: get a presigned upload URL from the server
+    const ext = selectedFile.name.split(".").pop().toLowerCase();
+    const urlRes = await fetch(
+      `/upload-url?ext=${encodeURIComponent(ext)}&contentType=${encodeURIComponent(selectedFile.type)}&size=${selectedFile.size}`
+    );
+    const urlData = await urlRes.json();
+    if (!urlRes.ok) {
+      showError(urlData.error || "Upload failed. Please try again.");
+      return;
+    }
+
+    // Step 2: upload the file directly to R2
+    const uploadRes = await fetch(urlData.uploadUrl, {
+      method: "PUT",
+      body: selectedFile,
+      headers: { "Content-Type": selectedFile.type || "application/octet-stream" },
+    });
+    if (!uploadRes.ok) {
+      showError("Upload failed. Please try again.");
+      return;
+    }
+
+    // Step 3: ask the server to transcribe
     const res = await fetch("/transcribe", {
       method: "POST",
-      body: formData,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: urlData.key, originalName: selectedFile.name }),
     });
 
     const data = await res.json();
