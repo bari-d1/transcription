@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/transcription/" />
+    <title>Transcribe by Dayo Adebari</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      .login-wrap {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 24px;
+      }
+
+      .login-card {
+        width: 100%;
+        max-width: 380px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 32px;
+      }
+
+      .login-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        color: var(--text);
+        margin-bottom: 6px;
+      }
+
+      .login-subtitle {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin-bottom: 28px;
+      }
+
+      .input-wrap {
+        position: relative;
+        margin-bottom: 12px;
+      }
+
+      .input-wrap input {
+        width: 100%;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 12px 44px 12px 14px;
+        font-size: 0.9rem;
+        font-family: inherit;
+        color: var(--text);
+        outline: none;
+        transition: border-color 0.15s;
+      }
+
+      .input-wrap input:focus {
+        border-color: var(--border-focus);
+      }
+
+      .input-wrap input::placeholder {
+        color: var(--text-dim);
+      }
+
+      .toggle-pw {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: var(--text-dim);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        padding: 4px;
+        transition: color 0.15s;
+      }
+
+      .toggle-pw:hover {
+        color: var(--text-muted);
+      }
+
+      .btn-login {
+        display: block;
+        width: 100%;
+        margin-top: 8px;
+        padding: 13px;
+        border-radius: 10px;
+        border: none;
+        background: var(--accent);
+        color: var(--accent-text);
+        font-size: 0.95rem;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        letter-spacing: -0.01em;
+        transition: opacity 0.15s;
+      }
+
+      .btn-login:hover {
+        opacity: 0.9;
+      }
+
+      .btn-login:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="header">
+        <div class="logo">
+          <img src="logo.png" alt="Dayo Adebari" style="height:28px;width:auto;" />
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" x2="12" y1="19" y2="22"/>
+          </svg>
+          Transcribe <span class="logo-by">by Dayo Adebari</span>
+        </div>
+      </header>
+
+      <div class="login-wrap">
+        <div class="login-card">
+          <p class="login-title">Enter password</p>
+          <p class="login-subtitle">This tool is password protected.</p>
+
+          <div class="error-banner" id="errorMsg" hidden></div>
+
+          <form id="loginForm">
+            <div class="input-wrap">
+              <input
+                type="password"
+                id="passwordInput"
+                placeholder="Password"
+                autocomplete="current-password"
+                autofocus
+              />
+              <button type="button" class="toggle-pw" id="togglePw" aria-label="Show password">
+                <svg id="eyeIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
+            <button class="btn-login" type="submit" id="loginBtn">Continue</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const form = document.getElementById("loginForm");
+      const input = document.getElementById("passwordInput");
+      const loginBtn = document.getElementById("loginBtn");
+      const errorMsg = document.getElementById("errorMsg");
+      const togglePw = document.getElementById("togglePw");
+
+      togglePw.addEventListener("click", () => {
+        const isPassword = input.type === "password";
+        input.type = isPassword ? "text" : "password";
+        togglePw.querySelector("svg").innerHTML = isPassword
+          ? `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>`
+          : `<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>`;
+      });
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        errorMsg.hidden = true;
+        loginBtn.disabled = true;
+        loginBtn.textContent = "Checking…";
+
+        try {
+          const res = await fetch("/transcription/auth", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password: input.value }),
+          });
+
+          if (res.ok) {
+            window.location.href = "/transcription";
+          } else {
+            errorMsg.textContent = "Incorrect password.";
+            errorMsg.hidden = false;
+            input.value = "";
+            input.focus();
+          }
+        } catch {
+          errorMsg.textContent = "Something went wrong. Please try again.";
+          errorMsg.hidden = false;
+        } finally {
+          loginBtn.disabled = false;
+          loginBtn.textContent = "Continue";
+        }
+      });
+    </script>
+  </body>
+</html>

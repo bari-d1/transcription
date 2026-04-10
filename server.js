@@ -1,10 +1,13 @@
 require("dotenv").config();
+require("dotenv").config();
 const express = require("express");
 const rateLimit = require("express-rate-limit");
 const { pipeline } = require("stream/promises");
 const { spawn } = require("child_process");
 const path = require("path");
 const fs = require("fs");
+const crypto = require("crypto");
+const cookieParser = require("cookie-parser");
 const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const OpenAI = require("openai");
@@ -14,6 +17,16 @@ const app = express();
 const PORT = 3000;
 
 app.set("trust proxy", 1);
+app.use(cookieParser());
+
+function authToken() {
+  return crypto.createHmac("sha256", process.env.ACCESS_PASSWORD || "").update("authenticated").digest("hex");
+}
+
+function requireAuth(req, res, next) {
+  if (req.cookies?.auth === authToken()) return next();
+  res.redirect("/transcription/login");
+}
 
 const r2 = new S3Client({
   region: "auto",
@@ -81,23 +94,27 @@ const uploadLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Password protection
-app.use((req, res, next) => {
-  const auth = req.headers.authorization;
-  if (auth) {
-    const password = Buffer.from(auth.split(" ")[1], "base64").toString().split(":")[1];
-    if (password === process.env.ACCESS_PASSWORD) return next();
-  }
-  res.set("WWW-Authenticate", 'Basic realm="Transcribe"');
-  res.status(401).send("Unauthorized");
+// Login page (public)
+app.get("/transcription/login", (req, res) => {
+  if (req.cookies?.auth === authToken()) return res.redirect("/transcription");
+  res.sendFile(path.join(__dirname, "public", "login.html"));
 });
 
-// Serve frontend
-app.use("/transcription", express.static(path.join(__dirname, "public")));
+// Auth endpoint (public)
+app.post("/transcription/auth", express.json(), (req, res) => {
+  if (req.body.password === process.env.ACCESS_PASSWORD) {
+    res.cookie("auth", authToken(), { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 });
+    return res.sendStatus(200);
+  }
+  res.sendStatus(401);
+});
+
+// Serve frontend (protected)
+app.use("/transcription", requireAuth, express.static(path.join(__dirname, "public")));
 app.use(express.json());
 
 // GET /transcription/upload-url — returns a presigned R2 PUT URL
-app.get("/transcription/upload-url", uploadLimiter, async (req, res) => {
+app.get("/transcription/upload-url", requireAuth, uploadLimiter, async (req, res) => {
   const { ext, contentType, size } = req.query;
   const normalizedExt = `.${ext}`.toLowerCase();
 
@@ -129,7 +146,7 @@ app.get("/transcription/upload-url", uploadLimiter, async (req, res) => {
 });
 
 // POST /transcription/transcribe — download from R2, send to Whisper API, delete from R2
-app.post("/transcription/transcribe", async (req, res) => {
+app.post("/transcription/transcribe", requireAuth, async (req, res) => {
   const { key, originalName } = req.body;
 
   if (!key) return res.status(400).json({ error: "No file key provided." });
