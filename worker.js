@@ -7,12 +7,7 @@ export default {
       renderUrl.hostname = "transcription-51bm.onrender.com";
       renderUrl.port = "";
 
-      return fetch(renderUrl.toString(), {
-        method: request.method,
-        headers: request.headers,
-        body: request.body,
-        redirect: "follow",
-      });
+      return fetch(new Request(renderUrl.toString(), request));
     }
 
     // All other requests pass through to your main site

@@ -109,8 +109,13 @@ app.post("/transcription/auth", express.json(), (req, res) => {
   res.sendStatus(401);
 });
 
-// Serve frontend (protected)
-app.use("/transcription", requireAuth, express.static(path.join(__dirname, "public")));
+// Serve frontend — static assets (CSS, JS, images) are public so the login page can load them
+// Only HTML (the app itself) requires auth
+app.use("/transcription", (req, res, next) => {
+  const ext = path.extname(req.path);
+  if (ext && ext !== ".html") return next();
+  requireAuth(req, res, next);
+}, express.static(path.join(__dirname, "public")));
 app.use(express.json());
 
 // GET /transcription/upload-url — returns a presigned R2 PUT URL
