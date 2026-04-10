@@ -1,11 +1,11 @@
 const express = require("express");
 const rateLimit = require("express-rate-limit");
-const { spawn } = require("child_process");
 const { pipeline } = require("stream/promises");
 const path = require("path");
 const fs = require("fs");
 const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
+const OpenAI = require("openai");
 
 const app = express();
 const PORT = 3000;
@@ -22,6 +22,8 @@ const r2 = new S3Client({
   requestChecksumCalculation: "when_required",
   responseChecksumValidation: "when_required",
 });
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const BUCKET = process.env.R2_BUCKET_NAME;
 
@@ -43,15 +45,15 @@ const ALLOWED_MIME_TYPES = new Set([
   "audio/flac",
   "audio/x-flac",
   "audio/webm",
-  "video/mp4", // m4a files are sometimes detected as video/mp4
+  "video/mp4",
 ]);
 
-const MAX_FILE_SIZE_MB = 100;
+const MAX_FILE_SIZE_MB = 25; // OpenAI Whisper API limit
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 // Rate limiter: max 10 uploads per hour per IP
 const uploadLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
+  windowMs: 60 * 60 * 1000,
   max: 10,
   message: {
     error: `Too many transcription requests. You can submit up to 10 files per hour. Please try again later.`,
@@ -87,7 +89,7 @@ app.get("/upload-url", uploadLimiter, async (req, res) => {
     const uploadUrl = await getSignedUrl(
       r2,
       new PutObjectCommand({ Bucket: BUCKET, Key: key }),
-      { expiresIn: 300 } // 5 minutes
+      { expiresIn: 300 }
     );
     res.json({ uploadUrl, key });
   } catch (err) {
@@ -96,13 +98,12 @@ app.get("/upload-url", uploadLimiter, async (req, res) => {
   }
 });
 
-// POST /transcribe — download from R2, transcribe, delete
+// POST /transcribe — download from R2, send to Whisper API, delete from R2
 app.post("/transcribe", async (req, res) => {
   const { key, originalName } = req.body;
 
   if (!key) return res.status(400).json({ error: "No file key provided." });
 
-  // Validate key format to prevent path traversal
   if (!/^upload-\d+-\d+\.[a-z0-9]+$/.test(key)) {
     return res.status(400).json({ error: "Invalid file key." });
   }
@@ -118,38 +119,22 @@ app.post("/transcribe", async (req, res) => {
     return res.status(500).json({ error: "Failed to retrieve uploaded file." });
   }
 
-  const python = spawn("python3", ["transcribe.py", tmpPath]);
-
-  let stdout = "";
-  let stderr = "";
-
-  python.stdout.on("data", (data) => { stdout += data.toString(); });
-  python.stderr.on("data", (data) => { stderr += data.toString(); });
-
-  python.on("close", (code) => {
-    fs.unlink(tmpPath, () => {});
-    r2.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key })).catch(console.error);
-
-    if (code !== 0) {
-      console.error("Transcription failed:", stderr);
-      return res.status(500).json({ error: "Transcription failed. Please try again." });
-    }
-
-    const text = stdout.trim();
-    if (!text) {
-      return res.status(500).json({ error: "Transcription produced no output." });
-    }
+  // Send to OpenAI Whisper API
+  try {
+    const transcription = await openai.audio.transcriptions.create({
+      file: fs.createReadStream(tmpPath),
+      model: "whisper-1",
+    });
 
     const baseName = originalName ? path.parse(originalName).name : "transcription";
-    res.json({ text, filename: `${baseName}.txt` });
-  });
-
-  python.on("error", (err) => {
+    res.json({ text: transcription.text, filename: `${baseName}.txt` });
+  } catch (err) {
+    console.error("Transcription failed:", err);
+    res.status(500).json({ error: "Transcription failed. Please try again." });
+  } finally {
     fs.unlink(tmpPath, () => {});
     r2.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key })).catch(console.error);
-    console.error("Failed to start Python:", err);
-    res.status(500).json({ error: "Server error: could not start transcription process." });
-  });
+  }
 });
 
 // Error handler
