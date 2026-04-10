@@ -97,7 +97,7 @@ transcribeBtn.addEventListener("click", async () => {
     // Step 1: get a presigned upload URL from the server
     const ext = selectedFile.name.split(".").pop().toLowerCase();
     const urlRes = await fetch(
-      `/upload-url?ext=${encodeURIComponent(ext)}&contentType=${encodeURIComponent(selectedFile.type)}&size=${selectedFile.size}`
+      `/transcription/upload-url?ext=${encodeURIComponent(ext)}&contentType=${encodeURIComponent(selectedFile.type)}&size=${selectedFile.size}`
     );
     const urlData = await urlRes.json();
     if (!urlRes.ok) {
@@ -117,7 +117,7 @@ transcribeBtn.addEventListener("click", async () => {
     }
 
     // Step 3: ask the server to transcribe
-    const res = await fetch("/transcribe", {
+    const res = await fetch("/transcription/transcribe", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key: urlData.key, originalName: selectedFile.name }),
