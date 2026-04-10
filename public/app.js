@@ -13,7 +13,7 @@ const resultText = document.getElementById("resultText");
 const downloadBtn = document.getElementById("downloadBtn");
 
 const ALLOWED_EXTENSIONS = new Set(["mp3", "mp4", "m4a", "wav", "ogg", "flac", "webm"]);
-const MAX_SIZE_BYTES = 25 * 1024 * 1024; // 25MB (OpenAI Whisper API limit)
+const MAX_SIZE_BYTES = 100 * 1024 * 1024; // 100MB
 
 let selectedFile = null;
 let downloadFilename = "transcription.txt";

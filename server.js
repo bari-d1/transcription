@@ -1,11 +1,14 @@
+require("dotenv").config();
 const express = require("express");
 const rateLimit = require("express-rate-limit");
 const { pipeline } = require("stream/promises");
+const { spawn } = require("child_process");
 const path = require("path");
 const fs = require("fs");
 const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const OpenAI = require("openai");
+const ffmpegPath = require("ffmpeg-static");
 
 const app = express();
 const PORT = 3000;
@@ -24,6 +27,22 @@ const r2 = new S3Client({
 });
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+const WHISPER_LIMIT_BYTES = 25 * 1024 * 1024;
+
+function compressAudio(inputPath, outputPath) {
+  return new Promise((resolve, reject) => {
+    const ff = spawn(ffmpegPath, [
+      "-i", inputPath,
+      "-ar", "16000",   // 16kHz sample rate (sufficient for speech)
+      "-ac", "1",       // mono
+      "-b:a", "32k",    // 32kbps bitrate
+      "-y", outputPath,
+    ]);
+    ff.on("close", (code) => code === 0 ? resolve() : reject(new Error(`ffmpeg exited with code ${code}`)));
+    ff.on("error", reject);
+  });
+}
 
 const BUCKET = process.env.R2_BUCKET_NAME;
 
@@ -48,7 +67,7 @@ const ALLOWED_MIME_TYPES = new Set([
   "video/mp4",
 ]);
 
-const MAX_FILE_SIZE_MB = 25; // OpenAI Whisper API limit
+const MAX_FILE_SIZE_MB = 100;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 // Rate limiter: max 10 uploads per hour per IP
@@ -119,10 +138,32 @@ app.post("/transcribe", async (req, res) => {
     return res.status(500).json({ error: "Failed to retrieve uploaded file." });
   }
 
+  // Compress if over Whisper's 25MB limit
+  let transcribeFrom = tmpPath;
+  const compressedPath = tmpPath + ".compressed.mp3";
+
+  try {
+    const { size } = fs.statSync(tmpPath);
+    if (size > WHISPER_LIMIT_BYTES) {
+      await compressAudio(tmpPath, compressedPath);
+      const compressedSize = fs.statSync(compressedPath).size;
+      if (compressedSize > WHISPER_LIMIT_BYTES) {
+        return res.status(400).json({ error: "Audio file is too long to transcribe. Please split it into shorter segments." });
+      }
+      transcribeFrom = compressedPath;
+    }
+  } catch (err) {
+    fs.unlink(tmpPath, () => {});
+    fs.unlink(compressedPath, () => {});
+    r2.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key })).catch(console.error);
+    console.error("Compression failed:", err);
+    return res.status(500).json({ error: "Failed to process audio file. Please try again." });
+  }
+
   // Send to OpenAI Whisper API
   try {
     const transcription = await openai.audio.transcriptions.create({
-      file: fs.createReadStream(tmpPath),
+      file: fs.createReadStream(transcribeFrom),
       model: "whisper-1",
     });
 
@@ -133,6 +174,7 @@ app.post("/transcribe", async (req, res) => {
     res.status(500).json({ error: "Transcription failed. Please try again." });
   } finally {
     fs.unlink(tmpPath, () => {});
+    fs.unlink(compressedPath, () => {});
     r2.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key })).catch(console.error);
   }
 });
