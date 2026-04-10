@@ -1,0 +1,7 @@
+name = "transcription-proxy"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+routes = [
+  { pattern = "dayoadebari.com/transcription*", zone_name = "dayoadebari.com" }
+]

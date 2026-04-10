@@ -82,11 +82,11 @@ const uploadLimiter = rateLimit({
 });
 
 // Serve frontend
-app.use(express.static(path.join(__dirname, "public")));
+app.use("/transcription", express.static(path.join(__dirname, "public")));
 app.use(express.json());
 
-// GET /upload-url — returns a presigned R2 PUT URL
-app.get("/upload-url", uploadLimiter, async (req, res) => {
+// GET /transcription/upload-url — returns a presigned R2 PUT URL
+app.get("/transcription/upload-url", uploadLimiter, async (req, res) => {
   const { ext, contentType, size } = req.query;
   const normalizedExt = `.${ext}`.toLowerCase();
 
@@ -117,8 +117,8 @@ app.get("/upload-url", uploadLimiter, async (req, res) => {
   }
 });
 
-// POST /transcribe — download from R2, send to Whisper API, delete from R2
-app.post("/transcribe", async (req, res) => {
+// POST /transcription/transcribe — download from R2, send to Whisper API, delete from R2
+app.post("/transcription/transcribe", async (req, res) => {
   const { key, originalName } = req.body;
 
   if (!key) return res.status(400).json({ error: "No file key provided." });
