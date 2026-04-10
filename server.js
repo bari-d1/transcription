@@ -81,6 +81,17 @@ const uploadLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Password protection
+app.use((req, res, next) => {
+  const auth = req.headers.authorization;
+  if (auth) {
+    const password = Buffer.from(auth.split(" ")[1], "base64").toString().split(":")[1];
+    if (password === process.env.ACCESS_PASSWORD) return next();
+  }
+  res.set("WWW-Authenticate", 'Basic realm="Transcribe"');
+  res.status(401).send("Unauthorized");
+});
+
 // Serve frontend
 app.use("/transcription", express.static(path.join(__dirname, "public")));
 app.use(express.json());
